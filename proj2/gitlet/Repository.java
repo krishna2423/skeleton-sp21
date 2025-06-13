@@ -46,9 +46,9 @@ public class Repository {
     public Repository() {
         if (GITLET_DIR.exists()) {
             currentBranch = Utils.readContentsAsString(HEAD_FILE);
-            branches = Utils.readObject(BRANCH_FILE, HashMap.class);
-            commits = Utils.readObject(Utils.join(COMMITS_DIR, "commits"), HashMap.class);
-            stage = Utils.readObject(STAGING_FILE, StagingArea.class);
+            branches = (HashMap<String, String>) Utils.readObject(BRANCH_FILE, HashMap.class);
+            commits = (HashMap<String, Commit>) Utils.readObject(Utils.join(COMMITS_DIR, "commits"), HashMap.class);
+            stage = (StagingArea) Utils.readObject(STAGING_FILE, StagingArea.class);
 
         }
         else {
