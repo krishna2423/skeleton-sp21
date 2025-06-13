@@ -54,7 +54,7 @@ public class Commit implements Serializable {
     }
 
     public String getSha1Id() {
-        return Utils.sha1(message, timeStamp, parent, blobs);
+        return Utils.sha1(Utils.serialize(this));
     }
 
     private String generateTimestamp(){
