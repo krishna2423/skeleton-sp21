@@ -43,6 +43,7 @@ public class Repository {
 
 
     //Constructor
+    @SuppressWarnings("unchecked")
     public Repository() {
         if (GITLET_DIR.exists()) {
             currentBranch = Utils.readContentsAsString(HEAD_FILE);
