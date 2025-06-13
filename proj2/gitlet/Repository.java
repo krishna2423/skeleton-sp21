@@ -49,7 +49,7 @@ public class Repository {
             currentBranch = Utils.readContentsAsString(HEAD_FILE);
             branches = (HashMap<String, String>) Utils.readObject(BRANCH_FILE, HashMap.class);
             commits = (HashMap<String, Commit>) Utils.readObject(Utils.join(COMMITS_DIR, "commits"), HashMap.class);
-            stage = (StagingArea) Utils.readObject(STAGING_FILE, StagingArea.class);
+            stage = Utils.readObject(STAGING_FILE, StagingArea.class);
 
         }
         else {
@@ -80,11 +80,11 @@ public class Repository {
 
         Utils.writeObject(STAGING_FILE, stage);
 
-        branches.put("master", initialCommit.getSha1Id());
+        branches.put(currentBranch, initialCommit.getSha1Id());
 
-        Utils.writeContents(HEAD_FILE, "master");
+        Utils.writeContents(HEAD_FILE, currentBranch);
         Utils.writeObject(BRANCH_FILE, (Serializable) branches);
 
-        Utils.writeObject(Utils.join(COMMITS_DIR, "commits"), (Serializable) commits);
+
     }
 }
