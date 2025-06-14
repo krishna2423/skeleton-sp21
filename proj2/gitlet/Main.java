@@ -31,9 +31,44 @@ public class Main {
         Repository repo = new Repository();
         switch(firstArg) {
             case "add":
-                // TODO: handle the `add [filename]` command
+                if (args.length != 2) {
+                    System.out.println("Incorrect operands.");
+                    System.exit(0);
+                }
+                repo.add(args[1]);
                 break;
-            // TODO: FILL THE REST IN
+            case "commit":
+                if (args.length != 2) {
+                    System.out.println("Incorrect operands.");
+                    System.exit(0);
+                }
+                repo.commit(args[1]);
+                break;
+            case "rm":
+                break;
+            case "log":
+                if (args.length != 1) {
+                    System.out.println("Incorrect operands.");
+                    System.exit(0);
+                }
+                repo.log();
+                break;
+            case "global-log":
+                break;
+            case "find":
+                break;
+            case "status":
+                break;
+            case "checkout":
+                if (args.length == 3 && args[1].equals("--")) {
+                    repo.checkout(args[2]);
+                } else if (args.length == 4 && args[2].equals("--")) {
+                    repo.checkout(args[1], args[3]);
+                } else if (args.length == 2){
+                    break;
+                } else{
+                    break;
+                }
         }
     }
 }

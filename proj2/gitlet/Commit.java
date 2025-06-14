@@ -52,6 +52,9 @@ public class Commit implements Serializable {
     public String getParent(){
         return this.parent;
     }
+    public Map<String, String> getBlobs() {
+        return this.blobs;
+    }
 
     public String getSha1Id() {
         return Utils.sha1(Utils.serialize(this));
