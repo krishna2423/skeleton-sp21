@@ -204,19 +204,19 @@ public class Repository {
     @SuppressWarnings("unchecked")
     public void checkout(String fileName) {
         // Failure Case
-        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
-        currentBranch = readContentsAsString(HEAD_FILE);
-        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
-        File blobFile = join(BLOBS_DIR, latest.getBlobs().get(fileName));
-        if (!blobFile.exists()) {
-            System.out.println("File blob does not exist.");
+        branches = (HashMap<String, String>) Utils.readObject(BRANCH_FILE, HashMap.class);
+        currentBranch = Utils.readContentsAsString(HEAD_FILE);
+        Commit latest = Utils.readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+
+        if (latest.getBlobs().get(fileName) == null) {
+            System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
 
-        File newFile = join(BLOBS_DIR, latest.getBlobs().get(fileName));
+        File newFile = Utils.join(BLOBS_DIR, latest.getBlobs().get(fileName));
         // replace the file in the working directory with the new file
-        byte[] content = readContents(newFile);
-        writeContents(join(CWD, fileName), (Object) content);
+        byte[] content = Utils.readContents(newFile);
+        Utils.writeContents(Utils.join(CWD, fileName), (Object) content);
     }
 
     @SuppressWarnings("unchecked")
