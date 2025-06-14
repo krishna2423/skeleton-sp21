@@ -81,41 +81,6 @@ public class Repository {
     }
 
     // add command
-//    @SuppressWarnings("unchecked")
-//    public void add(String fileName) {
-//        File fileToAdd = join(CWD, fileName);
-//        if (!fileToAdd.exists()) {
-//            System.out.println("File does not exist.");
-//            System.exit(0);
-//        }
-//
-//        stage = readObject(STAGING_FILE, StagingArea.class);
-//        byte[] content = readContents(fileToAdd);
-//        String blobSha1ID = sha1((Object) content);
-//
-//        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
-//        if (!blobFile.exists()) {
-//            writeContents(blobFile, (Object) content);
-//        }
-//
-//        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
-//        currentBranch = readContentsAsString(HEAD_FILE);
-//        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
-//        String committedBlob = latest.getBlobs().get(fileName);
-//        String stagedBlob = stage.getAddStage().get(fileName);
-//
-//        if (blobSha1ID.equals(committedBlob)) {
-//            stage.getAddStage().remove(fileName);
-//            stage.getRemoveStage().remove(fileName);
-//        } else if (blobSha1ID.equals(stagedBlob)) {
-//            return;
-//        } else {
-//            stage.getAddStage().put(fileName, blobSha1ID);
-//        }
-//
-//        writeObject(STAGING_FILE, stage);
-//    }
-
     @SuppressWarnings("unchecked")
     public void add(String fileName) {
         File fileToAdd = join(CWD, fileName);
@@ -128,23 +93,10 @@ public class Repository {
         byte[] content = readContents(fileToAdd);
         String blobSha1ID = sha1((Object) content);
 
-        // Forcefully compute the correct path every time
-        File blobFile = join(GITLET_DIR, "blobs", blobSha1ID);
-        blobFile.getParentFile().mkdirs(); // Make sure the directory exists
-
-        // Write blob if it doesn't exist
+        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
         if (!blobFile.exists()) {
-            writeContents(blobFile, content);
+            writeContents(blobFile, (Object) content);
         }
-
-        // ✅ Write a debug file in working directory so you can see results
-        File debug = new File("debug_add.txt");
-        writeContents(debug,
-                "CWD: " + CWD.getAbsolutePath() + "\n" +
-                        "Blob path: " + blobFile.getAbsolutePath() + "\n" +
-                        "Blob exists after write: " + blobFile.exists() + "\n" +
-                        "Blob SHA-1: " + blobSha1ID + "\n"
-        );
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
