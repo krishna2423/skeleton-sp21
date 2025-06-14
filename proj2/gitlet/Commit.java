@@ -37,7 +37,11 @@ public class Commit implements Serializable {
         this.message = message;
         this.parent = parent;
         this.blobs = blobs;
-        this.timeStamp = generateTimestamp();
+        if (parent == null) {
+            this.timeStamp = "00:00:00 UTC, 01-01-1970";
+        } else {
+            this.timeStamp = generateTimestamp();
+        }
     }
 
     //Getters

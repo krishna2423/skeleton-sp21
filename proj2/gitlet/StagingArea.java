@@ -26,8 +26,8 @@ public class StagingArea implements Serializable {
     }
 
     public void clear() {
-        this.addStage = new HashMap<String, String>();
-        this.removeStage = new HashSet<String>();
+        addStage.clear();
+        removeStage.clear();
     }
 
 }
