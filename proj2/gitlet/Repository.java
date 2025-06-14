@@ -116,6 +116,8 @@ public class Repository {
             }
         }
         writeObject(STAGING_FILE, stage);
+        System.out.println("Writing blob with id: " + blobSha1ID);
+        System.out.println("Blob content: " + new String(content));
 
 
     }
@@ -145,6 +147,7 @@ public class Repository {
         // use the staging area to remove/add tracked files
         for (String key: stage.getAddStage().keySet()) {
             newCommit.getBlobs().put(key, stage.getAddStage().get(key));
+            System.out.println("Storing file " + key + " with blob " + stage.getAddStage().get(key));
         }
 
         for (String fileName: stage.getRemoveStage()) {
@@ -209,16 +212,19 @@ public class Repository {
         branches = (HashMap<String, String>) Utils.readObject(BRANCH_FILE, HashMap.class);
         currentBranch = Utils.readContentsAsString(HEAD_FILE);
         Commit latest = Utils.readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        System.out.println("Looking up file: " + fileName);
+        System.out.println("Blob ID: " + latest.getBlobs().get(fileName));
 
         if (latest.getBlobs().get(fileName) == null) {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
-
+        System.out.println("Overwriting " + fileName + " in working directory");
         File newFile = Utils.join(BLOBS_DIR, latest.getBlobs().get(fileName));
         // replace the file in the working directory with the new file
         byte[] content = Utils.readContents(newFile);
         Utils.writeContents(Utils.join(CWD, fileName), (Object) content);
+        System.out.println("Writing content: " + new String(content));
     }
 
     @SuppressWarnings("unchecked")
