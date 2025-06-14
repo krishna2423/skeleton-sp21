@@ -95,8 +95,17 @@ public class Repository {
 
         File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
         if (!blobFile.exists()) {
-            writeContents(blobFile, content);
+            writeContents(blobFile, (Object) content);
         }
+
+        //DEBUG PRINTS
+        System.out.println("Writing blob to: " + blobFile.getAbsolutePath());
+        System.out.println("Blob exists after write? " + blobFile.exists());
+
+        // TEMP
+        File testBlob = Utils.join(BLOBS_DIR, "testblob");
+        Utils.writeContents(testBlob, (Object) "test123".getBytes());
+        System.out.println("Test blob written to: " + testBlob.getAbsolutePath());
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
