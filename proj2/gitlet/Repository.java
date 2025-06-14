@@ -93,29 +93,31 @@ public class Repository {
         byte[] content = readContents(fileToAdd);
         String blobSha1ID = sha1((Object) content);
 
-        if (BRANCH_FILE.exists() && HEAD_FILE.exists()) {
-            branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
-            currentBranch = readContentsAsString(HEAD_FILE);
+        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
+        currentBranch = readContentsAsString(HEAD_FILE);
 
-            Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
-            String committedBlob = latest.getBlobs().get(fileName);
-            String stagedBlob = stage.getAddStage().get(fileName);
+        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        String committedBlob = latest.getBlobs().get(fileName);
+        String stagedBlob = stage.getAddStage().get(fileName);
 
-            if (blobSha1ID.equals(committedBlob)) {
-                stage.getAddStage().remove(fileName);
-                stage.getRemoveStage().remove(fileName);
-            } else if (blobSha1ID.equals(stagedBlob)) {
-                // Already staged with same content
-                return;
-            } else {
-                stage.getAddStage().put(fileName, blobSha1ID);
-            }
+        if (blobSha1ID.equals(committedBlob)) {
+            stage.getAddStage().remove(fileName);
+            stage.getRemoveStage().remove(fileName);
+        } else if (blobSha1ID.equals(stagedBlob)) {
+            // Already staged with same content
+            return;
+        } else {
+            stage.getAddStage().put(fileName, blobSha1ID);
 
-            // Write blob file
+            // Write blob if it doesn't exist yet
             File blobFile = join(BLOBS_DIR, blobSha1ID);
-            writeContents(blobFile, (Object) content);
-            writeObject(STAGING_FILE, stage);
+            if (!blobFile.exists()) {
+                writeContents(blobFile, (Object) content);
+            }
         }
+        writeObject(STAGING_FILE, stage);
+
+
     }
 
     // commit command
