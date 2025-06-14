@@ -29,7 +29,7 @@ public class Repository {
     /** The .gitlet directory. */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
     public static final File COMMITS_DIR = join(GITLET_DIR, "commits");
-//    public static final File BLOBS_DIR = join(GITLET_DIR, "blobs");
+    public static final File BLOBS_DIR = join(GITLET_DIR, "blobs");
     public static final File STAGING_FILE = join(GITLET_DIR, "staging_area");
     public static final File HEAD_FILE = join(GITLET_DIR, "head");
     public static final File BRANCH_FILE = join(GITLET_DIR, "branch");
@@ -38,9 +38,6 @@ public class Repository {
     private String currentBranch;
     private Map<String, String> branches; // maps branch to latest commit in that branch
 
-    public static File getBlobsDir() {
-        return join(GITLET_DIR, "blobs");
-    }
 
     //Constructor
     @SuppressWarnings("unchecked")
@@ -68,7 +65,7 @@ public class Repository {
 
         GITLET_DIR.mkdirs();
         COMMITS_DIR.mkdirs();
-        getBlobsDir().mkdirs();
+        BLOBS_DIR.mkdirs();
 
         Commit initialCommit = new Commit("initial commit", null, new HashMap<String, String>());
 
@@ -84,6 +81,41 @@ public class Repository {
     }
 
     // add command
+//    @SuppressWarnings("unchecked")
+//    public void add(String fileName) {
+//        File fileToAdd = join(CWD, fileName);
+//        if (!fileToAdd.exists()) {
+//            System.out.println("File does not exist.");
+//            System.exit(0);
+//        }
+//
+//        stage = readObject(STAGING_FILE, StagingArea.class);
+//        byte[] content = readContents(fileToAdd);
+//        String blobSha1ID = sha1((Object) content);
+//
+//        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
+//        if (!blobFile.exists()) {
+//            writeContents(blobFile, (Object) content);
+//        }
+//
+//        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
+//        currentBranch = readContentsAsString(HEAD_FILE);
+//        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+//        String committedBlob = latest.getBlobs().get(fileName);
+//        String stagedBlob = stage.getAddStage().get(fileName);
+//
+//        if (blobSha1ID.equals(committedBlob)) {
+//            stage.getAddStage().remove(fileName);
+//            stage.getRemoveStage().remove(fileName);
+//        } else if (blobSha1ID.equals(stagedBlob)) {
+//            return;
+//        } else {
+//            stage.getAddStage().put(fileName, blobSha1ID);
+//        }
+//
+//        writeObject(STAGING_FILE, stage);
+//    }
+
     @SuppressWarnings("unchecked")
     public void add(String fileName) {
         File fileToAdd = join(CWD, fileName);
@@ -96,10 +128,23 @@ public class Repository {
         byte[] content = readContents(fileToAdd);
         String blobSha1ID = sha1((Object) content);
 
-        File blobFile = Utils.join(getBlobsDir(), blobSha1ID);
+        // Forcefully compute the correct path every time
+        File blobFile = join(GITLET_DIR, "blobs", blobSha1ID);
+        blobFile.getParentFile().mkdirs(); // Make sure the directory exists
+
+        // Write blob if it doesn't exist
         if (!blobFile.exists()) {
-            writeContents(blobFile, (Object) content);
+            writeContents(blobFile, content);
         }
+
+        // ✅ Write a debug file in working directory so you can see results
+        File debug = new File("debug_add.txt");
+        writeContents(debug,
+                "CWD: " + CWD.getAbsolutePath() + "\n" +
+                        "Blob path: " + blobFile.getAbsolutePath() + "\n" +
+                        "Blob exists after write: " + blobFile.exists() + "\n" +
+                        "Blob SHA-1: " + blobSha1ID + "\n"
+        );
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
@@ -215,7 +260,7 @@ public class Repository {
             System.out.println("File does not exist in that commit.");
             System.exit(0);
         }
-        File newFile = Utils.join(getBlobsDir(), latest.getBlobs().get(fileName));
+        File newFile = Utils.join(BLOBS_DIR, latest.getBlobs().get(fileName));
         // replace the file in the working directory with the new file
         byte[] content = Utils.readContents(newFile);
         Utils.writeContents(Utils.join(CWD, fileName), (Object) content);
@@ -239,7 +284,7 @@ public class Repository {
             System.exit(0);
         }
 
-        File blobFile = Utils.join(getBlobsDir(), blobID);
+        File blobFile = Utils.join(BLOBS_DIR, blobID);
         byte[] content = Utils.readContents(blobFile);
         Utils.writeContents(Utils.join(CWD, fileName), (Object) content);
     }
