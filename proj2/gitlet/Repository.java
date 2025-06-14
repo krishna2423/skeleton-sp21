@@ -93,7 +93,7 @@ public class Repository {
         byte[] content = readContents(fileToAdd);
         String blobSha1ID = sha1((Object) content);
 
-        File blobFile = join(BLOBS_DIR, blobSha1ID);
+        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
         if (!blobFile.exists()) {
             writeContents(blobFile, content);
         }
@@ -167,14 +167,16 @@ public class Repository {
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
         Commit current = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
-        while (current.getParent() != null) {
-            //print current
+        while (true) {
             System.out.println("===");
             System.out.println("commit " + current.getSha1Id());
             System.out.println("Date: " + formatForLog(current.getTimeStamp()));
             System.out.println(current.getMessage());
             System.out.println();
-            // set current to the parent
+
+            if (current.getParent() == null) {
+                break;
+            }
             current = readObject(join(COMMITS_DIR, current.getParent()), Commit.class);
         }
 
