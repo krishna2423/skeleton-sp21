@@ -109,11 +109,11 @@ public class Repository {
                 return;
             } else {
                 stage.getAddStage().put(fileName, blobSha1ID);
-
-                // Write blob file
-                File blobFile = join(BLOBS_DIR, blobSha1ID);
-                writeContents(blobFile, content);
             }
+
+            // Write blob file
+            File blobFile = join(BLOBS_DIR, blobSha1ID);
+            writeContents(blobFile, (Object) content);
             writeObject(STAGING_FILE, stage);
         }
     }
