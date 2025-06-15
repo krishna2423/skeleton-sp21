@@ -37,11 +37,7 @@ public class Commit implements Serializable {
         this.message = message;
         this.parent = parent;
         this.blobs = blobs;
-        if (parent == null) {
-            this.timeStamp = "00:00:00 UTC, 01-01-1970";
-        } else {
-            this.timeStamp = generateTimestamp();
-        }
+        this.timeStamp = generateTimestamp();
     }
 
     //Getters
@@ -61,13 +57,17 @@ public class Commit implements Serializable {
     }
 
     public String getSha1Id() {
-        return Utils.sha1(Utils.serialize(this));
+        return Utils.sha1((Object) Utils.serialize(this));
     }
 
-    private String generateTimestamp(){
-        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm:ss 'UTC', MM-dd--yyyy");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return formatter.format(new Date());
+    private String generateTimestamp() {
+        if (parent == null) {
+            return "Wed Dec 31 16:00:00 1969 -0800";
+        } else{
+            SimpleDateFormat formatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
+            formatter.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles")); // Spec uses PST
+            return formatter.format(new Date());
+        }
     }
 
 

@@ -168,38 +168,23 @@ public class Repository {
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
         Commit current = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+
         while (true) {
             System.out.println("===");
             System.out.println("commit " + current.getSha1Id());
-            System.out.println("Date: " + formatForLog(current.getTimeStamp()));
+            System.out.println("Date: " + current.getTimeStamp());
             System.out.println(current.getMessage());
-            System.out.println();
+            System.out.println(); // required blank line
 
             if (current.getParent() == null) {
                 break;
             }
             current = readObject(join(COMMITS_DIR, current.getParent()), Commit.class);
         }
-
         // IMPLEMENT MERGE COMMITS LATER
     }
 
-    private String formatForLog(String utcTimestamp) {
-        try {
-            // Format in which your commit timestamps were stored
-            SimpleDateFormat storedFormat = new SimpleDateFormat("HH:mm:ss 'UTC', MM-dd--yyyy");
-            storedFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
-            // Desired Git-style format (e.g., "Thu Nov 9 20:00:05 2017 -0800")
-            SimpleDateFormat gitFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
-            gitFormat.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles")); // PST/PDT
-
-            Date parsed = storedFormat.parse(utcTimestamp);
-            return gitFormat.format(parsed);
-        } catch (Exception e) {
-            return utcTimestamp; // Fallback if parsing fails
-        }
-    }
 
     // checkout command
     @SuppressWarnings("unchecked")
