@@ -120,44 +120,43 @@ public class Repository {
     // commit command
     @SuppressWarnings("unchecked")
     public void commit(String message) {
-        // failure case -- if the staging area is empty or if the message is empty
         stage = readObject(STAGING_FILE, StagingArea.class);
         if (stage.getAddStage().isEmpty() && stage.getRemoveStage().isEmpty()) {
             System.out.println("No changes added to the commit.");
             System.exit(0);
-        } if (message.isEmpty()) {
+        }
+        if (message.isEmpty()) {
             System.out.println("Please enter a commit message.");
             System.exit(0);
         }
 
-        // get the latest commit
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
         Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
-        // make a copy
+        // Finalize the new snapshot
         Map<String, String> newBlobs = new HashMap<String, String>(latest.getBlobs());
+
+        for (String file : stage.getAddStage().keySet()) {
+            newBlobs.put(file, stage.getAddStage().get(file));
+        }
+        for (String file : stage.getRemoveStage()) {
+            newBlobs.remove(file);
+        }
+
+        // Create the commit with the finalized blob snapshot
         Commit newCommit = new Commit(message, latest.getSha1Id(), newBlobs);
 
-        // use the staging area to remove/add tracked files
-        for (String key: stage.getAddStage().keySet()) {
-            newCommit.getBlobs().put(key, stage.getAddStage().get(key));
-        }
-
-        for (String fileName: stage.getRemoveStage()) {
-            newCommit.getBlobs().remove(fileName);
-        }
-
-        // clear the staging area
-        stage.clear();
-        writeObject(STAGING_FILE, stage);
-
-        // update instance variables
-        branches.put(currentBranch, newCommit.getSha1Id());
-
-        // add the commit to the commitsDirectory as a new commit file and write the object for persistence updating branches
+        // Compute SHA and write to file
         File commitFile = join(COMMITS_DIR, newCommit.getSha1Id());
         writeObject(commitFile, newCommit);
+
+        // Update branch pointer
+        branches.put(currentBranch, newCommit.getSha1Id());
+
+        // Clear and persist
+        stage.clear();
+        writeObject(STAGING_FILE, stage);
         writeObject(BRANCH_FILE, (Serializable) branches);
     }
 

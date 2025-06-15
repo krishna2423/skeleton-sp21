@@ -30,6 +30,7 @@ public class Commit implements Serializable {
     private String timeStamp;
     private String parent;
     private Map<String, String> blobs; // file name to blob sha1ID
+    private String sha1ID;
 
     /* TODO: fill in the rest of this class. */
     //Constructor
@@ -38,6 +39,7 @@ public class Commit implements Serializable {
         this.parent = parent;
         this.blobs = blobs;
         this.timeStamp = generateTimestamp();
+        this.sha1ID = Utils.sha1(Utils.serialize(this));
     }
 
     //Getters
@@ -57,7 +59,7 @@ public class Commit implements Serializable {
     }
 
     public String getSha1Id() {
-        return Utils.sha1((Object) Utils.serialize(this));
+        return this.sha1ID;
     }
 
     private String generateTimestamp() {
