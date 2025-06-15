@@ -81,6 +81,40 @@ public class Repository {
     }
 
     // add command
+//    @SuppressWarnings("unchecked")
+//    public void add(String fileName) {
+//        File fileToAdd = join(CWD, fileName);
+//        if (!fileToAdd.exists()) {
+//            System.out.println("File does not exist.");
+//            System.exit(0);
+//        }
+//
+//        stage = readObject(STAGING_FILE, StagingArea.class);
+//        byte[] content = readContents(fileToAdd);
+//        String blobSha1ID = sha1((Object) content);
+//
+//        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
+//        if (!blobFile.exists()) {
+//            writeContents(blobFile, (Object) content);
+//        }
+//
+//        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
+//        currentBranch = readContentsAsString(HEAD_FILE);
+//        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+//        String committedBlob = latest.getBlobs().get(fileName);
+//        String stagedBlob = stage.getAddStage().get(fileName);
+//
+//        if (blobSha1ID.equals(committedBlob)) {
+//            stage.getAddStage().remove(fileName);
+//            stage.getRemoveStage().remove(fileName);
+//        } else if (blobSha1ID.equals(stagedBlob)) {
+//            return;
+//        } else {
+//            stage.getAddStage().put(fileName, blobSha1ID);
+//        }
+//
+//        writeObject(STAGING_FILE, stage);
+//    }
     @SuppressWarnings("unchecked")
     public void add(String fileName) {
         File fileToAdd = join(CWD, fileName);
@@ -93,9 +127,24 @@ public class Repository {
         byte[] content = readContents(fileToAdd);
         String blobSha1ID = sha1((Object) content);
 
-        File blobFile = Utils.join(BLOBS_DIR, blobSha1ID);
+        // HARD-CODED path to blobs directory
+        File blobFile = join(GITLET_DIR, "blobs", blobSha1ID);
+        blobFile.getParentFile().mkdirs(); // make sure .gitlet/blobs exists
+
+        // Write debug info to help inspect from test output
+        File debugFile = new File("debug_add.txt");
+        writeContents(debugFile,
+                "CWD: " + CWD.getAbsolutePath() + "\n" +
+                        "GITLET_DIR: " + GITLET_DIR.getAbsolutePath() + "\n" +
+                        "blob path: " + blobFile.getAbsolutePath() + "\n" +
+                        "blob exists before write: " + blobFile.exists() + "\n"
+        );
+
         if (!blobFile.exists()) {
-            writeContents(blobFile, (Object) content);
+            writeContents(blobFile, content);
+            System.out.println("Wrote blob to: " + blobFile.getAbsolutePath());
+        } else {
+            System.out.println("Blob already exists.");
         }
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
