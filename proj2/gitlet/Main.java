@@ -44,7 +44,11 @@ public class Main {
             repo.commit(args[1]);
 
         } else if (firstArg.equals("rm")) {
-            // stub for rm
+            if (args.length != 2) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.rm(args[1]);
 
         } else if (firstArg.equals("log")) {
             if (args.length != 1) {
@@ -54,13 +58,25 @@ public class Main {
             repo.log();
 
         } else if (firstArg.equals("global-log")) {
-            // stub for global-log
+            if (args.length != 1) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.globalLog();
 
         } else if (firstArg.equals("find")) {
-            // stub for find
+            if (args.length != 2) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.find(args[1]);
 
         } else if (firstArg.equals("status")) {
-            // stub for status
+            if (args.length != 1) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.status();
 
         } else if (firstArg.equals("checkout")) {
             if (args.length == 3 && args[1].equals("--")) {
@@ -68,13 +84,39 @@ public class Main {
             } else if (args.length == 4 && args[2].equals("--")) {
                 repo.checkout(args[1], args[3]);
             } else if (args.length == 2) {
-                // stub for branch checkout
+                repo.checkoutBranch(args[1]);
             } else {
                 System.out.println("Incorrect operands.");
                 System.exit(0);
             }
 
-        } else {
+        } else if (firstArg.equals("branch")) {
+                if (args.length != 2) {
+                    System.out.println("Incorrect operands.");
+                    System.exit(0);
+                }
+                repo.branch(args[1]);
+        } else if (firstArg.equals("rm-branch")) {
+            if (args.length != 2) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.rmBranch(args[1]);
+        } else if (firstArg.equals("reset")) {
+            if (args.length != 2) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.reset(args[1]);
+        } else if (firstArg.equals("merge")) {
+            if (args.length != 2) {
+                System.out.println("Incorrect operands.");
+                System.exit(0);
+            }
+            repo.merge(args[1]);
+        }
+
+        else {
             System.out.println("No command with that name exists.");
             System.exit(0);
         }

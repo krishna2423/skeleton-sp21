@@ -29,6 +29,7 @@ public class Commit implements Serializable {
     private String message;
     private String timeStamp;
     private String parent;
+    private String parent2; // for merge commits
     private Map<String, String> blobs; // file name to blob sha1ID
     private String sha1ID;
 
@@ -37,9 +38,15 @@ public class Commit implements Serializable {
     public Commit(String message, String parent, Map<String, String> blobs) {
         this.message = message;
         this.parent = parent;
+        this.parent2 = null;
         this.blobs = blobs;
         this.timeStamp = generateTimestamp();
         this.sha1ID = Utils.sha1(Utils.serialize(this));
+    }
+
+    //Setter
+    public void setParent2(String p2) {
+        this.parent2 = p2;
     }
 
     //Getters
@@ -51,15 +58,24 @@ public class Commit implements Serializable {
         return this.timeStamp;
     }
 
-    public String getParent(){
+    public String getParent() {
         return this.parent;
     }
+
+    public String getParent2() {
+        return this.parent2;
+    }
+
     public Map<String, String> getBlobs() {
         return this.blobs;
     }
 
     public String getSha1Id() {
         return this.sha1ID;
+    }
+
+    public void finalizeSha1() {
+        this.sha1ID = Utils.sha1((Object) Utils.serialize(this));
     }
 
     private String generateTimestamp() {
