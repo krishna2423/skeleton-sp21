@@ -31,12 +31,12 @@ public class Repository {
     /**
      * The .gitlet directory.
      */
-    public static final File GITLET_DIR = join(CWD, ".gitlet");
-    public static final File COMMITS_DIR = join(GITLET_DIR, "commits");
-    public static final File BLOBS_DIR = join(GITLET_DIR, "blobs");
-    public static final File STAGING_FILE = join(GITLET_DIR, "staging_area");
-    public static final File HEAD_FILE = join(GITLET_DIR, "head");
-    public static final File BRANCH_FILE = join(GITLET_DIR, "branch");
+    public static final File GITLET_DIR = Utils.join(CWD, ".gitlet");
+    public static final File COMMITS_DIR = Utils.join(GITLET_DIR, "commits");
+    public static final File BLOBS_DIR = Utils.join(GITLET_DIR, "blobs");
+    public static final File STAGING_FILE = Utils.join(GITLET_DIR, "staging_area");
+    public static final File HEAD_FILE = Utils.join(GITLET_DIR, "head");
+    public static final File BRANCH_FILE = Utils.join(GITLET_DIR, "branch");
 
     private StagingArea stage;
     private String currentBranch;
@@ -72,7 +72,7 @@ public class Repository {
 
         Commit initialCommit = new Commit("initial commit", null, new HashMap<String, String>());
 
-        File commitFile = join(COMMITS_DIR, initialCommit.getSha1Id());
+        File commitFile = Utils.join(COMMITS_DIR, initialCommit.getSha1Id());
         writeObject(commitFile, initialCommit);
 
         writeObject(STAGING_FILE, stage);
@@ -86,7 +86,7 @@ public class Repository {
     // add command
     @SuppressWarnings("unchecked")
     public void add(String fileName) {
-        File fileToAdd = join(CWD, fileName);
+        File fileToAdd = Utils.join(CWD, fileName);
         if (!fileToAdd.exists()) {
             System.out.println("File does not exist.");
             return;
@@ -103,7 +103,7 @@ public class Repository {
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
-        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
         String committedBlob = latest.getBlobs().get(fileName);
         String stagedBlob = stage.getAddStage().get(fileName);
 
@@ -135,7 +135,7 @@ public class Repository {
 
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
-        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
         // Finalize the new snapshot
         Map<String, String> newBlobs = new HashMap<String, String>(latest.getBlobs());
@@ -151,7 +151,7 @@ public class Repository {
         Commit newCommit = new Commit(message, latest.getSha1Id(), newBlobs);
 
         // Compute SHA and write to file
-        File commitFile = join(COMMITS_DIR, newCommit.getSha1Id());
+        File commitFile = Utils.join(COMMITS_DIR, newCommit.getSha1Id());
         writeObject(commitFile, newCommit);
 
         // Update branch pointer
@@ -169,7 +169,7 @@ public class Repository {
         // get the latest commit
         branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
-        Commit current = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit current = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
         while (true) {
             if (current.getParent2() != null) {
@@ -191,7 +191,7 @@ public class Repository {
             if (current.getParent() == null) {
                 break;
             }
-            current = readObject(join(COMMITS_DIR, current.getParent()), Commit.class);
+            current = readObject(Utils.join(COMMITS_DIR, current.getParent()), Commit.class);
         }
     }
 
@@ -224,8 +224,8 @@ public class Repository {
             return;
         }
 
-        File blobFile = join(BLOBS_DIR, blobID);
-        Utils.writeContents(join(CWD, fileName), (Object) Utils.readContents(blobFile));
+        File blobFile = Utils.join(BLOBS_DIR, blobID);
+        Utils.writeContents(Utils.join(CWD, fileName), (Object) Utils.readContents(blobFile));
     }
 
     //CHECKPOINT 1 COMPLETED ---
@@ -251,8 +251,8 @@ public class Repository {
         if (targetCommit != null) {
             for (String fileName : targetCommit.getBlobs().keySet()) {
                 String blobId = targetCommit.getBlobs().get(fileName);
-                File blobFile = join(BLOBS_DIR, blobId);
-                Utils.writeContents(join(CWD, fileName), (Object) Utils.readContents(blobFile));
+                File blobFile = Utils.join(BLOBS_DIR, blobId);
+                Utils.writeContents(Utils.join(CWD, fileName), (Object) Utils.readContents(blobFile));
             }
 
         }
@@ -283,7 +283,7 @@ public class Repository {
         stage = readObject(STAGING_FILE, StagingArea.class);
         branches = readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
-        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
         boolean isStaged = stage.getAddStage().containsKey(fileName);
         boolean isTracked = latest.getBlobs().containsKey(fileName);
@@ -299,7 +299,7 @@ public class Repository {
 
         if (isTracked) {
             stage.getRemoveStage().add(fileName);
-            File file = join(CWD, fileName);
+            File file = Utils.join(CWD, fileName);
             Utils.restrictedDelete(file);
         }
 
@@ -347,15 +347,15 @@ public class Repository {
     //status command
     @SuppressWarnings("unchecked")
     public void status() {
-        System.out.println("=== Branches ===");
         currentBranch = Utils.readContentsAsString(HEAD_FILE);
         branches = Utils.readObject(BRANCH_FILE, HashMap.class);
-        System.out.println("*" + currentBranch);
+        stage = Utils.readObject(STAGING_FILE, StagingArea.class);
+        System.out.println("=== Branches ===");
         List<String> branchList = new ArrayList<String>(branches.keySet());
         Collections.sort(branchList);
         for (String branch : branchList) {
             if (branch.equals(currentBranch)) {
-                continue;
+                System.out.println("*" + branch);
             } else {
                 System.out.println(branch);
             }
@@ -392,7 +392,7 @@ public class Repository {
     @SuppressWarnings("unchecked")
     public void branch(String branchName) {
         branches = Utils.readObject(BRANCH_FILE, HashMap.class);
-        Commit latest = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
         if (branches.containsKey(branchName)) {
             System.out.println("A branch with that name already exists.");
@@ -428,18 +428,18 @@ public class Repository {
         currentBranch = Utils.readContentsAsString(HEAD_FILE);
         stage = Utils.readObject(STAGING_FILE, StagingArea.class);
 
-        Commit currentCommit = readObject(join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+        Commit currentCommit = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
         if (hasUntrackedFileConflict(currentCommit, targetCommit)) return;
         for (String fileName: targetCommit.getBlobs().keySet()) {
             String blobId = targetCommit.getBlobs().get(fileName);
-            File blobFile = join(BLOBS_DIR, blobId);
+            File blobFile = Utils.join(BLOBS_DIR, blobId);
             byte[] content = Utils.readContents(blobFile);
-            Utils.writeContents(join(CWD, fileName), (Object) content);
+            Utils.writeContents(Utils.join(CWD, fileName), (Object) content);
         }
         if (currentCommit != null) {
             for (String fileName : currentCommit.getBlobs().keySet()) {
                 if (!targetCommit.getBlobs().containsKey(fileName)) {
-                    Utils.restrictedDelete(fileName);
+                    Utils.restrictedDelete(Utils.join(CWD, fileName));
                 }
             }
         }
