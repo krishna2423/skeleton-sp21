@@ -116,7 +116,7 @@ public class Repository {
             stage.getAddStage().put(fileName, blobSha1ID);
         }
 
-        writeObject(STAGING_FILE, stage);
+        Utils.writeObject(STAGING_FILE, stage);
     }
 
 
@@ -149,6 +149,52 @@ public class Repository {
 
         // Create the commit with the finalized blob snapshot
         Commit newCommit = new Commit(message, latest.getSha1Id(), newBlobs);
+
+        // Compute SHA and write to file
+        File commitFile = Utils.join(COMMITS_DIR, newCommit.getSha1Id());
+        writeObject(commitFile, newCommit);
+
+        // Update branch pointer
+        branches.put(currentBranch, newCommit.getSha1Id());
+
+        // Clear and persist
+        stage.clear();
+        writeObject(STAGING_FILE, stage);
+        writeObject(BRANCH_FILE, (Serializable) branches);
+    }
+
+    // commit command for merge command (helper)
+    @SuppressWarnings("unchecked")
+    public void commit(String message, String secondParentSha) {
+        stage = readObject(STAGING_FILE, StagingArea.class);
+        if (stage.getAddStage().isEmpty() && stage.getRemoveStage().isEmpty() && secondParentSha == null) {
+            System.out.println("No changes added to the commit.");
+            return;
+        }
+        if (message.isEmpty()) {
+            System.out.println("Please enter a commit message.");
+            return;
+        }
+
+        branches = (HashMap<String, String>) readObject(BRANCH_FILE, HashMap.class);
+        currentBranch = readContentsAsString(HEAD_FILE);
+        Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
+
+        // Finalize the new snapshot
+        Map<String, String> newBlobs = new HashMap<String, String>(latest.getBlobs());
+
+        for (String file : stage.getAddStage().keySet()) {
+            newBlobs.put(file, stage.getAddStage().get(file));
+        }
+        for (String file : stage.getRemoveStage()) {
+            newBlobs.remove(file);
+        }
+
+        // Create the commit with the finalized blob snapshot
+        Commit newCommit = new Commit(message, latest.getSha1Id(), newBlobs);
+        if (secondParentSha != null) {
+            newCommit.setParent2(secondParentSha); // set second parent before finalizing SHA
+        }
 
         // Compute SHA and write to file
         File commitFile = Utils.join(COMMITS_DIR, newCommit.getSha1Id());
@@ -275,14 +321,14 @@ public class Repository {
 
     }
 
-
-
     // rm command
     @SuppressWarnings("unchecked")
     public void rm(String fileName) {
         stage = readObject(STAGING_FILE, StagingArea.class);
         branches = readObject(BRANCH_FILE, HashMap.class);
         currentBranch = readContentsAsString(HEAD_FILE);
+
+
         Commit latest = readObject(Utils.join(COMMITS_DIR, branches.get(currentBranch)), Commit.class);
 
         boolean isStaged = stage.getAddStage().containsKey(fileName);
@@ -293,9 +339,7 @@ public class Repository {
             return;
         }
 
-        if (isStaged) {
-            stage.getAddStage().remove(fileName);
-        }
+        stage.getAddStage().remove(fileName);
 
         if (isTracked) {
             stage.getRemoveStage().add(fileName);
@@ -456,11 +500,236 @@ public class Repository {
     }
 
     //merge command
+    @SuppressWarnings("unchecked")
     public void merge(String branchName) {
+        // failure cases
 
+        stage = Utils.readObject(STAGING_FILE, StagingArea.class);
+        branches = Utils.readObject(BRANCH_FILE, HashMap.class);
+        currentBranch = Utils.readContentsAsString(HEAD_FILE);
+
+        Commit currentCommit = getCommit(branches.get(currentBranch));
+        Commit branchCommit = getCommit(branches.get(branchName));
+
+
+        if (!stage.getRemoveStage().isEmpty() || !stage.getAddStage().isEmpty()) {
+            System.out.println("You have uncommitted changes.");
+            return;
+        } if (hasUntrackedFileConflictMerge(currentCommit, branchCommit)) {
+            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            return;
+        } if (!branches.containsKey(branchName)) {
+            System.out.println("A branch with that name does not exist");
+            return;
+        } if (currentBranch.equals(branchName)) {
+            System.out.println("Cannot merge a branch with itself.");
+            return;
+        }
+
+
+        //finding the split point
+        String splitPoint = getSplitPoint(currentCommit, branchCommit);
+
+        if (splitPoint != null && splitPoint.equals(branchCommit.getSha1Id())) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        }
+        if (splitPoint != null && splitPoint.equals(currentCommit.getSha1Id())) {
+            // Fast-forward: move current branch pointer to the given branch's commit
+            branches.put(currentBranch, branches.get(branchName));
+            Utils.writeObject(BRANCH_FILE, (Serializable) branches);
+
+            // Checkout the given branch
+            checkoutBranch(branchName);
+
+            System.out.println("Current branch fast-forwarded.");
+            return;
+        }
+
+        Map<String, String> splitBlobs = getCommit(splitPoint).getBlobs();
+        Map<String, String> currentBlobs = currentCommit.getBlobs();
+        Map<String, String> givenBlobs = branchCommit.getBlobs();
+        
+        Set<String> allFiles = new HashSet<String>();
+        allFiles.addAll(splitBlobs.keySet());
+        allFiles.addAll(currentBlobs.keySet());
+        allFiles.addAll(givenBlobs.keySet());
+
+        boolean conflict = false;
+
+        for (String fileName : allFiles) {
+            String splitFile = splitBlobs.get(fileName);
+            String currFile = currentBlobs.get(fileName);
+            String givenFile = givenBlobs.get(fileName);
+
+            // Case 1: modified in given, unchanged in current → take given version
+            if (equals(splitFile, currFile) && !equals(splitFile, givenFile)) {
+                if (givenFile != null) {
+                    checkout(branches.get(branchName), fileName);
+                    add(fileName);
+                } else {
+                    rm(fileName);
+                }
+            }
+            // Case 2: modified in current, unchanged in given → keep current (do nothing)
+            else if (!equals(splitFile, currFile) && equals(splitFile, givenFile)) {
+                continue;
+            }
+            // Case 3: both modified identically → do nothing
+            else if (!equals(splitFile, currFile) && !equals(splitFile, givenFile) && equals(currFile, givenFile)) {
+                continue;
+
+            }
+            // Case 4: file only in given branch → take it
+            else if (splitFile == null && currFile == null && givenFile != null) {
+                checkout(branches.get(branchName), fileName);
+                add(fileName);
+            }
+            // Case 5: file only in current branch → keep it
+            else if (splitFile == null && currFile != null && givenFile == null) {
+                continue;
+            }
+            else if (equals(splitFile, currFile) && equals(splitFile, givenFile)) {
+                // Unchanged in both branches → do nothing
+                continue;
+            }
+            // Case 6: file removed in given, unchanged in current → remove
+            else if (splitFile != null && equals(splitFile, currFile) && givenFile == null) {
+                rm(fileName);
+            }
+            // Case 7: file removed in current, unchanged in given → keep given (do nothing)
+            else if (splitFile != null && equals(splitFile, givenFile) && currFile == null) {
+                continue;
+            }
+            // Case 8: conflict → write conflict file
+            else {
+                writeConflictFile(fileName, currFile, givenFile);
+                add(fileName);
+                conflict = true;
+            }
+        }
+        Utils.writeObject(STAGING_FILE, stage);
+        String mergeMessage = "Merged " + branchName + " into " + currentBranch + ".";
+        commit(mergeMessage, branches.get(branchName));
+
+        if (conflict) {
+            System.out.println("Encountered a merge conflict.");
+        }
     }
 
     // HELPER METHODS
+
+    /** Returns the split point (lowest common ancestor) of the two commits. */
+    private String getSplitPoint(Commit currentCommit, Commit givenCommit) {
+        Map<String, Integer> currentAncestors = getAncestorsWithDepth(currentCommit);
+
+        String splitPoint = null;
+        int minDepth = Integer.MAX_VALUE;
+        Queue<Commit> queue = new LinkedList<Commit>();
+        Queue<Integer> depths = new LinkedList<Integer>();
+        Set<String> visited = new HashSet<String>();
+
+        queue.add(givenCommit);
+        depths.add(0);
+
+        while (!queue.isEmpty()) {
+            Commit commit = queue.poll();
+            int depth = depths.poll();
+            String sha = commit.getSha1Id();
+
+            if (visited.contains(sha)) continue;
+            visited.add(sha);
+
+            if (currentAncestors.containsKey(sha)) {
+                int totalDepth = depth + currentAncestors.get(sha);
+                if (totalDepth < minDepth) {
+                    minDepth = totalDepth;
+                    splitPoint = sha;
+                }
+            }
+
+            String p1 = commit.getParent();
+            String p2 = commit.getParent2();
+
+            if (p1 != null) {
+                queue.add(getCommit(p1));
+                depths.add(depth + 1);
+            }
+            if (p2 != null) {
+                queue.add(getCommit(p2));
+                depths.add(depth + 1);
+            }
+        }
+
+        return splitPoint;
+    }
+
+    private boolean equals(String a, String b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
+    }
+
+    private void writeConflictFile(String fileName, String currBlobSha, String givenBlobSha) {
+        String currContent = "";
+        String givenContent = "";
+
+        // Load blob contents if they exist; treat null (deleted file) as empty
+        if (currBlobSha != null) {
+            File currBlobFile = join(BLOBS_DIR, currBlobSha);
+            currContent = readContentsAsString(currBlobFile);
+        }
+        if (givenBlobSha != null) {
+            File givenBlobFile = join(BLOBS_DIR, givenBlobSha);
+            givenContent = readContentsAsString(givenBlobFile);
+        }
+
+        // Build conflict content
+        String conflict = "<<<<<<< HEAD\n"
+                + currContent
+                + "=======\n"
+                + givenContent
+                + ">>>>>>>\n";
+
+        // Write to working directory
+        File outFile = join(CWD, fileName);
+        writeContents(outFile, conflict);
+    }
+
+    public Map<String, Integer> getAncestorsWithDepth(Commit start) {
+        Map<String, Integer> ancestors = new HashMap<String, Integer>();
+        Queue<Commit> queue = new LinkedList<Commit>();
+        Queue<Integer> depths = new LinkedList<Integer>();
+
+        queue.add(start);
+        depths.add(0);
+
+        while (!queue.isEmpty()) {
+            Commit current = queue.poll();
+            int depth = depths.poll();
+            String sha = current.getSha1Id();
+
+            if (ancestors.containsKey(sha)) {
+                continue; // already visited at a shallower depth
+            }
+
+            ancestors.put(sha, depth);
+
+            String p1 = current.getParent();
+            String p2 = current.getParent2();
+
+            if (p1 != null) {
+                queue.add(getCommit(p1));
+                depths.add(depth + 1);
+            }
+            if (p2 != null) {
+                queue.add(getCommit(p2));
+                depths.add(depth + 1);
+            }
+        }
+
+        return ancestors;
+    }
 
     /** Returns full commit ID if abbreviation is valid and unique, else null */
     public static String expandAbbreviatedCommitId(String shortId) {
@@ -507,6 +776,34 @@ public class Repository {
             }
         }
         return false;
+    }
+
+    private boolean hasUntrackedFileConflictMerge(Commit current, Commit given) {
+        List<String> cwdFiles = Utils.plainFilenamesIn(CWD);
+        if (cwdFiles == null) return false;
+
+        StagingArea stage = Utils.readObject(STAGING_FILE, StagingArea.class);
+        Map<String, String> currentBlobs = current.getBlobs();
+        Map<String, String> givenBlobs = given.getBlobs();
+
+        for (String file : cwdFiles) {
+            File cwdFile = Utils.join(CWD, file);
+            String cwdFileSha = Utils.sha1((Object) Utils.readContents(cwdFile));
+
+            boolean isTrackedInCurrent = currentBlobs.containsKey(file);
+            boolean isUnmodifiedFromCurrent = isTrackedInCurrent &&
+                    currentBlobs.get(file).equals(cwdFileSha);
+            boolean isStaged = stage.getAddStage().containsKey(file);
+            boolean isUntracked = !isTrackedInCurrent && !isStaged;
+
+            boolean willBeOverwritten = givenBlobs.containsKey(file);
+
+            if ((isUntracked || !isUnmodifiedFromCurrent) && willBeOverwritten) {
+                return true;
+            }
+        }
+        return false;
+
     }
 }
 
